@@ -9,7 +9,7 @@ INSTALL_DIR="/usr/local/${PACKAGE}"
 PYTHON_DIR="/usr/local/python"
 GIT_DIR="/usr/local/git"
 PATH="${INSTALL_DIR}/bin:${INSTALL_DIR}/env/bin:${PYTHON_DIR}/bin:${GIT_DIR}/bin:${PATH}"
-USER="nzbhydra"
+USER="$([ $(/bin/get_key_value /etc.defaults/VERSION buildnumber) -ge 7135 ] && echo -n sc-nzbhydra || echo -n nzbhydra)"
 PYTHON="${INSTALL_DIR}/env/bin/python"
 NZBHYDRA="${INSTALL_DIR}/share/nzbhydra/nzbhydra.py"
 PID_FILE="${INSTALL_DIR}/var/nzbhydra.pid"
@@ -20,7 +20,7 @@ CONF_FILE="${INSTALL_DIR}/var/settings.cfg"
 
 start_daemon ()
 {
-    su ${USER} -c "PATH=${PATH} ${PYTHON} ${NZBHYDRA} --daemon --nobrowser --database ${DB_FILE} --config ${CONF_FILE} --logfile ${LOG_FILE} --pidfile ${PID_FILE} "
+    su ${USER} -s /bin/sh -c "PATH=${PATH} ${PYTHON} ${NZBHYDRA} --daemon --nobrowser --database ${DB_FILE} --config ${CONF_FILE} --logfile ${LOG_FILE} --pidfile ${PID_FILE} "
 }
 
 stop_daemon ()

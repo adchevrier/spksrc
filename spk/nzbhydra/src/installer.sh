@@ -9,13 +9,18 @@ INSTALL_DIR="/usr/local/${PACKAGE}"
 SSS="/var/packages/${PACKAGE}/scripts/start-stop-status"
 PYTHON_DIR="/usr/local/python"
 PATH="${INSTALL_DIR}/bin:${INSTALL_DIR}/env/bin:${PYTHON_DIR}/bin:${PATH}"
-USER="nzbhydra"
-GROUP="users"
 VIRTUALENV="${PYTHON_DIR}/bin/virtualenv"
+DELUSER="${PYTHON_DIR}/bin/deluser"
+DELGROUP="${PYTHON_DIR}/bin/delgroup"
 TMP_DIR="${SYNOPKG_PKGDEST}/../../@tmp"
-
 SERVICETOOL="/usr/syno/bin/servicetool"
 FWPORTS="/var/packages/${PACKAGE}/scripts/${PACKAGE}.sc"
+
+BUILDNUMBER="$(/bin/get_key_value /etc.defaults/VERSION buildnumber)"
+USER="$([ ${BUILDNUMBER} -ge "7135" ] && echo -n sc-nzbhydra || echo -n nzbhydra)"
+GROUP="users"
+
+. `dirname $0`/common
 
 preinst ()
 {
@@ -30,14 +35,13 @@ postinst ()
     # Create a Python virtualenv
     ${VIRTUALENV} --system-site-packages ${INSTALL_DIR}/env > /dev/null
 
-    # Create user
-    adduser -h ${INSTALL_DIR}/var -g "${DNAME} User" -G ${GROUP} -s /bin/sh -S -D ${USER}
+    create_legacy_user "${USER}" "${GROUP}"
 
     # Correct the files ownership
     chown -R ${USER}:root ${SYNOPKG_PKGDEST}
 
     # Add firewall config
-    ${SERVICETOOL} --install-configure-file --package ${FWPORTS} >> /dev/null
+    ${SERVICETOOL} --install-configure-file --package ${FWPORTS} > /dev/null
 
     exit 0
 }
@@ -47,15 +51,14 @@ preuninst ()
     # Stop the package
     ${SSS} stop > /dev/null
 
-    # Remove the user (if not upgrading)
+    # Uninstall
     if [ "${SYNOPKG_PKG_STATUS}" != "UPGRADE" ]; then
-        delgroup ${USER} ${GROUP}
-        deluser ${USER}
-    fi
-
-    # Remove firewall config
-    if [ "${SYNOPKG_PKG_STATUS}" == "UNINSTALL" ]; then
-        ${SERVICETOOL} --remove-configure-file --package ${PACKAGE}.sc >> /dev/null
+        remove_syno_group "${USER}" "${GROUP}"
+        # Remove legacy user
+        remove_legacy_user "nzbhydra" "${GROUP}"
+        # Remove DSM6 user and force refresh of interface
+        remove_syno_user "${USER}"
+        ${SERVICETOOL} --remove-configure-file --package ${PACKAGE}.sc > /dev/null
     fi
 
     exit 0
@@ -73,6 +76,9 @@ preupgrade ()
 {
     # Stop the package
     ${SSS} stop > /dev/null
+
+    # Removal of legacy user when migrated to DSM6
+    dsm6_remove_legacy_user "nzbhydra" ${GROUP}
 
     # Save some stuff
     rm -fr ${TMP_DIR}/${PACKAGE}

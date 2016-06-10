@@ -18,6 +18,7 @@ CHANGELOG = "First release"
 HOMEPAGE   = https://github.com/theotherp/nzbhydra
 LICENSE    = ApacheV2
 
+COMMON_SCRIPT    = ../../common/common.sh
 INSTALLER_SCRIPT = src/installer.sh
 SSS_SCRIPT       = src/dsm-control.sh
 FWPORTS          = src/${SPK_NAME}.sc
